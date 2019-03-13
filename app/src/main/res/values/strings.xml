@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">RC Car Controller</string>
+    <string name="rx">rx</string>
+    <string name="read_buffer">read buffer</string>
+    <string name="status">status</string>
+    <string name="bluetooth_status">bluetooth status</string>
+    <string name="bluetooth_on">bluetooth on</string>
+    <string name="bluetooth_off">bluetooth off</string>
+    <string name="show_paired_devices">show paired devices</string>
+    <string name="discover_new_devices">discover new devices</string>
+    <string name="forward">forward</string>
+    <string name="left">left</string>
+    <string name="right">right</string>
+    <string name="back">back</string>
+    <string name="stop">stop</string>
+</resources>
