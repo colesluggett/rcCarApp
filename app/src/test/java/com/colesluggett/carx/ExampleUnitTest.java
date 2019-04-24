@@ -1,4 +1,4 @@
-package com.colesluggett.rc_app;
+package com.colesluggett.carx;
 
 import org.junit.Test;
 

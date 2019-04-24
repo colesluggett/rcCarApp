@@ -1,7 +1,6 @@
-package com.colesluggett.rc_app;
+package com.colesluggett.carx;
 
 import android.annotation.SuppressLint;
-import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
@@ -11,17 +10,18 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Handler;
-import android.os.SystemClock;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -29,6 +29,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.Socket;
+import java.net.SocketImplFactory;
 import java.util.Set;
 import java.util.UUID;
 
@@ -37,20 +39,19 @@ public class MainActivity extends AppCompatActivity {
     // GUI Components
     private TextView mBluetoothStatus;
     private TextView mReadBuffer;
-    private Button mScanBtn;
-    private Button mOffBtn;
     private Button mListPairedDevicesBtn;
     private Button mDiscoverBtn;
     private Button left;
     private Button right;
     private Button forward;
-    private Button back;
-    private Button stop;
+    private Button xr;
+    private Button xl;
     private BluetoothAdapter mBTAdapter;
     private Set<BluetoothDevice> mPairedDevices;
     private ArrayAdapter<String> mBTArrayAdapter;
     private ListView mDevicesListView;
-    private Button startCarActivity;
+    private SeekBar speedControl;
+    private int progressChanged = 0;
 
     private Handler mHandler; // Our main handler that will receive callback notifications
     public ConnectedThread mConnectedThread; // bluetooth background worker thread to send and receive data
@@ -65,27 +66,25 @@ public class MainActivity extends AppCompatActivity {
     private final static int CONNECTING_STATUS = 3; // used in bluetooth handler to identify message status
     private final static int REQUEST_PERMISSION_BLUETOOTH=4;
 
-    @SuppressLint("HandlerLeak")
+    @SuppressLint({"ClickableViewAccessibility", "HandlerLeak"})
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
         mBluetoothStatus = (TextView) findViewById(R.id.bluetoothStatus);
         mReadBuffer = (TextView) findViewById(R.id.readBuffer);
-        mScanBtn = (Button) findViewById(R.id.scan);
-        mOffBtn = (Button) findViewById(R.id.off);
         mDiscoverBtn = (Button) findViewById(R.id.discover);
         mListPairedDevicesBtn = (Button) findViewById(R.id.PairedBtn);
+        xl = findViewById(R.id.xleft);
+        xr = findViewById(R.id.xright);
         left = findViewById(R.id.left);
         right = findViewById(R.id.right);
         forward = findViewById(R.id.forward);
-        back = findViewById(R.id.backward);
-        stop = findViewById(R.id.stop);
-
+        speedControl = findViewById(R.id.seekBar);
+        speedControl.setMax(510);
+        speedControl.setProgress(255);
         mBTArrayAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1);
         mBTAdapter = BluetoothAdapter.getDefaultAdapter(); // get a handle on the bluetooth radio
-
         mDevicesListView = (ListView) findViewById(R.id.devicesListView);
         mDevicesListView.setAdapter(mBTArrayAdapter); // assign model to view
         mDevicesListView.setOnItemClickListener(mDeviceClickListener);
@@ -118,78 +117,145 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(getApplicationContext(), "Bluetooth device not found!", Toast.LENGTH_SHORT).show();
         }
 
-
-        left.setOnClickListener(new View.OnClickListener() {
+        
+        //function is called when button is pressed
+        xr.setOnTouchListener(new View.OnTouchListener() {
             @Override
-            public void onClick(View v) {
-                if(mConnectedThread != null) {
-                    mConnectedThread.write("L");
-                    Toast.makeText(getApplicationContext(), "Sent L", Toast.LENGTH_SHORT).show();
-                    } else {
-                    Toast.makeText(getApplicationContext(), "Null Pointer", Toast.LENGTH_SHORT).show();
+            public boolean onTouch(View v, MotionEvent event) {
+                mConnectedThread.write("X\n" + progressChanged);
+                try {
+                    Thread.currentThread().setPriority(1);
+                    Thread.sleep(75);
+                } catch (InterruptedException e) {
+                    Toast.makeText(getApplicationContext(), "Error sending signal", Toast.LENGTH_SHORT).show();
                 }
+                if (event.getAction() == MotionEvent.ACTION_UP){  //enabled when button is no longer being pressed
+                    mConnectedThread.write("S\n" + 255);
                 }
+                return false;
+            }
+
+        });
+        xl.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                mConnectedThread.write("Y\n" + progressChanged);
+                try {
+                    Thread.currentThread().setPriority(1);
+                    Thread.sleep(75);
+                } catch (InterruptedException e) {
+                    Toast.makeText(getApplicationContext(), "Error sending signal", Toast.LENGTH_SHORT).show();
+                }
+                if (event.getAction() == MotionEvent.ACTION_UP) {
+                    mConnectedThread.write("S\n" + 255);
+                }
+                return false;
+            }
         });
 
+        right.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                mConnectedThread.write("R\n" + progressChanged);
+                try {
+                    Thread.currentThread().setPriority(1);
+                    Thread.sleep(75);
+                } catch (InterruptedException e) {
+                    Toast.makeText(getApplicationContext(), "Error sending signal", Toast.LENGTH_SHORT).show();
+                }
+                if (event.getAction() == MotionEvent.ACTION_UP){
+                    mConnectedThread.write("S\n" + 255);
+                }
+                return false;
+            }
+
+        });
+        left.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                mConnectedThread.write("L\n" + progressChanged);
+                try {
+                    Thread.currentThread().setPriority(1);
+                    Thread.sleep(75);
+                } catch (InterruptedException e) {
+                    Toast.makeText(getApplicationContext(), "Error sending signal", Toast.LENGTH_SHORT).show();
+                }
+                if (event.getAction() == MotionEvent.ACTION_UP) {
+                    mConnectedThread.write("S\n" + 255);
+                }
+                return false;
+            }
+        });
+
+        forward.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                mConnectedThread.write("F\n" + progressChanged);
+                try {
+                    Thread.currentThread().setPriority(1);
+                    Thread.sleep(25);
+                } catch (InterruptedException e) {
+                    Toast.makeText(getApplicationContext(), "Error sending signal", Toast.LENGTH_SHORT).show();
+                }
+                if (event.getAction() == MotionEvent.ACTION_UP){
+                    mConnectedThread.write("F"+255);
+                    //flag = false;
+                }
+                return false;
+            }
+        });
+
+        speedControl.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {    //updates slider on change
+                progressChanged=progress;
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+            }
+        });
+
+
+        //backup stop methods
         right.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if(mConnectedThread != null) {
-                    mConnectedThread.write("R");
-                    Toast.makeText(getApplicationContext(), "Sent R", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(getApplicationContext(), "Null Pointer", Toast.LENGTH_SHORT).show();
-                }
+                mConnectedThread.write("R"+255);
+
             }
         });
+        left.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mConnectedThread.write("L"+255);
 
+            }
+        });
+        xr.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mConnectedThread.write("R"+255);
+
+            }
+        });
+        xl.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mConnectedThread.write("L"+255);
+
+            }
+        });
         forward.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if(mConnectedThread != null) {
-                    mConnectedThread.write("F");
-                    Toast.makeText(getApplicationContext(), "Sent F", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(getApplicationContext(), "Null Pointer", Toast.LENGTH_SHORT).show();
-                }
-            }
-        });
+                mConnectedThread.write("F"+255);
 
-        back.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if(mConnectedThread != null) {
-                    mConnectedThread.write("B");
-                    Toast.makeText(getApplicationContext(), "Sent B", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(getApplicationContext(), "Null Pointer", Toast.LENGTH_SHORT).show();
-                }
-            }
-        });
-
-        stop.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if(mConnectedThread != null) {
-                    mConnectedThread.write("S");
-                    Toast.makeText(getApplicationContext(), "Sent S", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(getApplicationContext(), "Null Pointer", Toast.LENGTH_SHORT).show();
-                }
-            }
-        });
-
-        mScanBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                bluetoothOn(v);
-            }
-        });
-
-        mOffBtn.setOnClickListener(new View.OnClickListener(){
-            @Override
-            public void onClick(View v){
-                bluetoothOff(v);
             }
         });
 
@@ -206,18 +272,6 @@ public class MainActivity extends AppCompatActivity {
                 discover(v);
             }
         });
-    }
-    private void bluetoothOn(View view){
-        if (!mBTAdapter.isEnabled()) {
-            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
-            mBluetoothStatus.setText("Bluetooth enabled");
-            Toast.makeText(getApplicationContext(),"Bluetooth turned on",Toast.LENGTH_SHORT).show();
-
-        }
-        else{
-            Toast.makeText(getApplicationContext(),"Bluetooth is already on", Toast.LENGTH_SHORT).show();
-        }
     }
 
     // Enter here after user selects "yes" or "no" to enabling radio
@@ -253,12 +307,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
-
-    private void bluetoothOff(View view){
-        mBTAdapter.disable(); // turn off
-        mBluetoothStatus.setText("Bluetooth disabled");
-        Toast.makeText(getApplicationContext(),"Bluetooth turned Off", Toast.LENGTH_SHORT).show();
-    }
+    
 
     private void discover(View view) {
         // Check if the device is already discovering
@@ -415,7 +464,7 @@ public class MainActivity extends AppCompatActivity {
                     // Read from the InputStream
                     bytes = mmInStream.available();
                     if(bytes != 0) {
-                        SystemClock.sleep(100); //pause and wait for rest of data. Adjust this depending on your sending speed.
+//                        SystemClock.sleep(100); //pause and wait for rest of data. Adjust this depending on your sending speed.
                         bytes = mmInStream.available(); // how many bytes are ready to be read?
                         bytes = mmInStream.read(buffer, 0, bytes); // record how many bytes we actually read
                         mHandler.obtainMessage(MESSAGE_READ, bytes, -1, buffer)
@@ -435,12 +484,6 @@ public class MainActivity extends AppCompatActivity {
                 mmOutStream.write(bytes);
             } catch (IOException e) { }
         }
-
-        /* Call this from the main activity to shutdown the connection */
-        public void cancel() {
-            try {
-                mmSocket.close();
-            } catch (IOException e) { }
-        }
     }
+
 }

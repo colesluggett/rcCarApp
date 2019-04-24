@@ -1,4 +1,4 @@
-package com.colesluggett.rc_app;
+package com.colesluggett.carx;
 
 import android.content.Context;
 import android.support.test.InstrumentationRegistry;
@@ -21,6 +21,6 @@ public class ExampleInstrumentedTest {
         // Context of the app under test.
         Context appContext = InstrumentationRegistry.getTargetContext();
 
-        assertEquals("com.colesluggett.rc_app", appContext.getPackageName());
+        assertEquals("com.colesluggett.carx", appContext.getPackageName());
     }
 }

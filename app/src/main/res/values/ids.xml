@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--<item name="scan" type="id">scan</item>
+    <item name="off" type="id">off</item>
+    <item name="discover" type="id">discover</item>
+    <item name="readBuffer" type="id">readBuffer</item>
+    <item name="bluetoothStatus" type="id">bluetoothStatus</item>
+    <item name="forward" type="id">forward</item>
+    <item name="backward" type="id">backward</item>
+    <item name="stop" type="id">stop</item>
+    <item name="seekBar" type="id">seekBar</item>
+    <item name="devicesListView" type="id">devicesListView</item>
+    <item name="PairedBtn" type="id">PairedBtn</item>-->
+</resources>
